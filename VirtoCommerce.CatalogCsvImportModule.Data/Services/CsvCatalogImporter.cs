@@ -25,6 +25,7 @@ using VirtoCommerce.Platform.Core.Settings;
 using SearchCriteria = VirtoCommerce.Domain.Catalog.Model.SearchCriteria;
 using VirtoCommerce.Domain.Catalog.Model.Search;
 using VirtoCommerce.Domain.Inventory.Model;
+using VirtoCommerce.Domain.Commerce.Model;
 
 namespace VirtoCommerce.CatalogCsvImportModule.Data.Services
 {
@@ -50,7 +51,10 @@ namespace VirtoCommerce.CatalogCsvImportModule.Data.Services
         private readonly bool _createPropertyDictionatyValues;
         private List<Store> _stores = new List<Store>();
 
-        public CsvCatalogImporter(ICatalogService catalogService, ICategoryService categoryService, IItemService productService, ISkuGenerator skuGenerator,
+		private List<string> addedCategories = new List<string>();
+
+
+		public CsvCatalogImporter(ICatalogService catalogService, ICategoryService categoryService, IItemService productService, ISkuGenerator skuGenerator,
                                   IPricingService pricingService, IInventoryService inventoryService, IFulfillmentCenterSearchService fulfillmentCenterSearchService,
                                   IPropertyService propertyService, ICatalogSearchService searchService, Func<ICatalogRepository> catalogRepositoryFactory, IPricingSearchService pricingSearchService,
                                   ISettingsManager settingsManager, IStoreService storeService, IProperyDictionaryItemSearchService propDictItemSearchService, IProperyDictionaryItemService propDictItemService)
@@ -289,6 +293,7 @@ namespace VirtoCommerce.CatalogCsvImportModule.Data.Services
         /// </summary>
         private void SaveCategoryTree(Catalog catalog, IEnumerable<CsvProduct> csvProducts, ExportImportProgressInfo progressInfo, Action<ExportImportProgressInfo> progressCallback)
         {
+			int i = 1;
             var cachedCategoryMap = new Dictionary<string, Category>();
 
             foreach (var csvProduct in csvProducts.Where(x => x.Category != null && !string.IsNullOrEmpty(x.Category.Path)))
@@ -313,17 +318,46 @@ namespace VirtoCommerce.CatalogCsvImportModule.Data.Services
 
                     if (category == null)
                     {
-                        var code = categoryName.GenerateSlug();
+						var seo = new SeoInfo();
+
+						var code = categoryName.GenerateSlug();
                         if (string.IsNullOrEmpty(code))
                         {
                             code = Guid.NewGuid().ToString("N");
                         }
-                        category = _categoryService.Create(new Category() { Name = categoryName, Code = code, CatalogId = catalog.Id, ParentId = parentCategoryId });
-                        //Raise notification each notifyCategorySizeLimit category
-                        var count = progressInfo.ProcessedCount;
+
+						// Adding SEO infos to categories.
+						if (addedCategories.Any(s => s.EqualsInvariant(code)))
+						{
+							seo.SemanticUrl = code + i.ToString();
+							i++;
+						}
+						else
+						{
+							addedCategories.Add(code);
+							seo.SemanticUrl = code;
+						}
+
+						seo.LanguageCode = csvProduct.SeoLanguage;
+						seo.PageTitle = categoryName;
+						seo.IsActive = true;
+						seo.Name = code;
+
+						category = _categoryService.Create(new Category()
+						{
+							Name = categoryName,
+							Code = code,
+							CatalogId = catalog.Id,
+							ParentId = parentCategoryId,
+							SeoInfos = new SeoInfo[] { seo }
+						});
+
+						//Raise notification each notifyCategorySizeLimit category
+						var count = progressInfo.ProcessedCount;
                         progressInfo.Description = $"Creating categories: {++count} created";
                         progressCallback(progressInfo);
                     }
+
                     csvProduct.CategoryId = category.Id;
                     csvProduct.Category = category;
                     parentCategoryId = category.Id;
@@ -332,7 +366,7 @@ namespace VirtoCommerce.CatalogCsvImportModule.Data.Services
             }
         }
 
-        private void SaveProducts(List<CsvProduct> csvProducts, ExportImportProgressInfo progressInfo, Action<ExportImportProgressInfo> progressCallback)
+		private void SaveProducts(List<CsvProduct> csvProducts, ExportImportProgressInfo progressInfo, Action<ExportImportProgressInfo> progressCallback)
         {
             var defaultFulfilmentCenter = _fulfillmentCenterSearchService.SearchCenters(new Domain.Inventory.Model.Search.FulfillmentCenterSearchCriteria { Take = 1 }).Results.FirstOrDefault();
 
@@ -383,7 +417,7 @@ namespace VirtoCommerce.CatalogCsvImportModule.Data.Services
             }
         }
 
-        private void SaveProductInventories(IList<CsvProduct> products, FulfillmentCenter defaultFulfilmentCenter)
+        private void SaveProductInventories(IList<CsvProduct> products, Domain.Inventory.Model.FulfillmentCenter defaultFulfilmentCenter)
         {
             //Set productId for dependent objects
             foreach (var product in products)
@@ -627,9 +661,9 @@ namespace VirtoCommerce.CatalogCsvImportModule.Data.Services
 
         }
 
-        #region Import allowed
+		#region Import allowed
 
-        private bool SeoAllowed(List<CsvProduct> csvProducts, ExportImportProgressInfo progressInfo, Action<ExportImportProgressInfo> progressCallback)
+		private bool SeoAllowed(List<CsvProduct> csvProducts, ExportImportProgressInfo progressInfo, Action<ExportImportProgressInfo> progressCallback)
         {
             bool isCompleted = true;
 
