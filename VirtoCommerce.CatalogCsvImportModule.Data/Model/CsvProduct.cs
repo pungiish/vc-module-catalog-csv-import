@@ -182,11 +182,16 @@ namespace VirtoCommerce.CatalogCsvImportModule.Data.Model
             {
                 if (!string.IsNullOrEmpty(value))
                 {
-                    Images.Add(new Image
+                    int firstImage = 0;
+                    string arrayOfImages = value.Split(' ');
+                    foreach (string image in arrayOfImages)
                     {
+                        Images.Add(new Image {
                         Url = value,
-                        SortOrder = 0
+                        SortOrder = firstImage
                     });
+                        firstImage = 1;
+                    }
                 }
             }
         }
