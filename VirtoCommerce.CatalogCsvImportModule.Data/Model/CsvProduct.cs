@@ -183,7 +183,7 @@ namespace VirtoCommerce.CatalogCsvImportModule.Data.Model
                 if (!string.IsNullOrEmpty(value))
                 {
                     int firstImage = 0;
-                    string arrayOfImages = value.Split(' ');
+                    string[] arrayOfImages = value.Split(' ');
                     foreach (string image in arrayOfImages)
                     {
                         Images.Add(new Image {
