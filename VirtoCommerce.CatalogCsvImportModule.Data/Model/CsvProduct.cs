@@ -187,7 +187,7 @@ namespace VirtoCommerce.CatalogCsvImportModule.Data.Model
                     foreach (string image in arrayOfImages)
                     {
                         Images.Add(new Image {
-                        Url = value,
+                        Url = image,
                         SortOrder = imageOrder
                     });
                         imageOrder++;
