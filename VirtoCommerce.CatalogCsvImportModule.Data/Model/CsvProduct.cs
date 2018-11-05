@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -182,15 +182,15 @@ namespace VirtoCommerce.CatalogCsvImportModule.Data.Model
             {
                 if (!string.IsNullOrEmpty(value))
                 {
-                    int firstImage = 0;
+                    int imageOrder = 0;
                     string[] arrayOfImages = value.Split(' ');
                     foreach (string image in arrayOfImages)
                     {
                         Images.Add(new Image {
                         Url = value,
-                        SortOrder = firstImage
+                        SortOrder = imageOrder
                     });
-                        firstImage = 1;
+                        imageOrder++;
                     }
                 }
             }
